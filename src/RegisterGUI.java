@@ -3,60 +3,104 @@ import java.awt.*;
 import java.sql.*;
 
 public class RegisterGUI extends JFrame {
-    private JTextField usernameField;
-    private JPasswordField passwordField;
-    private JComboBox<String> roleCombo;
-
     public RegisterGUI() {
-        setTitle("Register New User");
-        setSize(360, 230);
+        setTitle("Register User");
+        setSize(400, 400);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        JPanel form = new JPanel(new GridLayout(3, 2, 10, 10));
-        form.setBorder(BorderFactory.createEmptyBorder(15, 15, 10, 15));
+        JPanel panel = new JPanel(new GridLayout(7, 2, 10, 10));
 
-        form.add(new JLabel("Username:"));
-        usernameField = new JTextField();
-        form.add(usernameField);
+        JLabel userLabel = new JLabel("Username:");
+        JTextField userField = new JTextField();
 
-        form.add(new JLabel("Password:"));
-        passwordField = new JPasswordField();
-        form.add(passwordField);
+        JLabel passLabel = new JLabel("Password:");
+        JPasswordField passField = new JPasswordField();
 
-        form.add(new JLabel("Role:"));
-        roleCombo = new JComboBox<>(new String[]{"Donor", "Recipient", "Admin"});
-        form.add(roleCombo);
+        JLabel nameLabel = new JLabel("Full Name:");
+        JTextField nameField = new JTextField();
 
-        JButton registerBtn = new JButton("Create Account");
-        add(form, BorderLayout.CENTER);
-        add(registerBtn, BorderLayout.SOUTH);
+        JLabel contactLabel = new JLabel("Contact Info:");
+        JTextField contactField = new JTextField();
 
-        registerBtn.addActionListener(e -> doRegister());
-    }
+        JLabel bloodLabel = new JLabel("Blood Group:");
+        JTextField bloodField = new JTextField();
 
-    private void doRegister() {
-        String u = usernameField.getText().trim();
-        String p = new String(passwordField.getPassword());
-        String r = (String) roleCombo.getSelectedItem();
+        JLabel roleLabel = new JLabel("Role:");
+        String[] roles = {"Donor", "Recipient"};
+        JComboBox<String> roleBox = new JComboBox<>(roles);
 
-        if (u.isEmpty() || p.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please fill all fields.");
-            return;
-        }
+        JButton registerBtn = new JButton("Register");
 
-        String sql = "INSERT INTO users(username, password, role) VALUES(?,?,?)";
-        try (Connection c = DBConnection.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, u);
-            ps.setString(2, p);
-            ps.setString(3, r);
-            ps.executeUpdate();
-            JOptionPane.showMessageDialog(this, "User registered successfully!");
-            dispose();
-        } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this, "DB error: " + ex.getMessage());
-        }
+        panel.add(userLabel);
+        panel.add(userField);
+        panel.add(passLabel);
+        panel.add(passField);
+        panel.add(nameLabel);
+        panel.add(nameField);
+        panel.add(contactLabel);
+        panel.add(contactField);
+        panel.add(bloodLabel);
+        panel.add(bloodField);
+        panel.add(roleLabel);
+        panel.add(roleBox);
+        panel.add(new JLabel());
+        panel.add(registerBtn);
+
+        add(panel, BorderLayout.CENTER);
+
+        registerBtn.addActionListener(e -> {
+            String username = userField.getText();
+            String password = new String(passField.getPassword());
+            String name = nameField.getText();
+            String contactInfo = contactField.getText();
+            String bloodGroup = bloodField.getText();
+            String role = roleBox.getSelectedItem().toString();
+
+            if (username.isEmpty() || password.isEmpty() || name.isEmpty() || contactInfo.isEmpty() || bloodGroup.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please fill all fields.");
+                return;
+            }
+
+            try (Connection c = DBConnection.getConnection()) {
+                // Insert into users table
+                String sqlUser = "INSERT INTO users (username, password, role, name) VALUES (?, ?, ?, ?)";
+                try (PreparedStatement ps = c.prepareStatement(sqlUser)) {
+                    ps.setString(1, username);
+                    ps.setString(2, password);
+                    ps.setString(3, role.toLowerCase());
+                    ps.setString(4, name);
+                    ps.executeUpdate();
+                }
+
+                if (role.equalsIgnoreCase("donor")) {
+                    // Insert into donor table
+                    String sqlDonor = "INSERT INTO donor (username, contact_info, blood_group) VALUES (?, ?, ?)";
+                    try (PreparedStatement ps2 = c.prepareStatement(sqlDonor)) {
+                        ps2.setString(1, username);
+                        ps2.setString(2, contactInfo);
+                        ps2.setString(3, bloodGroup);
+                        ps2.executeUpdate();
+                    }
+                } else {
+                    // Insert into recipient table
+                    String sqlRecipient = "INSERT INTO recipient (username, contact_info, blood_group) VALUES (?, ?, ?)";
+                    try (PreparedStatement ps3 = c.prepareStatement(sqlRecipient)) {
+                        ps3.setString(1, username);
+                        ps3.setString(2, contactInfo);
+                        ps3.setString(3, bloodGroup);
+                        ps3.executeUpdate();
+                    }
+                }
+
+                JOptionPane.showMessageDialog(this, "Registration successful!");
+                dispose();
+
+            } catch (SQLException ex) {
+                JOptionPane.showMessageDialog(this, "DB error: " + ex.getMessage());
+            }
+        });
     }
 }
+
 
